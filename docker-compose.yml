@@ -22,3 +22,42 @@
 #
 # The entire stack must start with a single: docker compose up
 # ============================================================================
+
+# ModelServe — local development stack (Phases 1–2)
+# Prerequisites: copy .env.example to .env
+#   cp .env.example .env
+# Start everything:
+#   docker compose up -d
+# Base services only (operations doc 2.4):
+#   docker compose up -d postgres redis mlflow
+
+name: modelserve
+
+networks:
+  modelserve:
+    driver: bridge
+
+volumes:
+  pgdata: {}
+  mlflow_artifacts: {}
+  prometheus_data: {}
+  grafana_data: {}
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlflow}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow} -d ${POSTGRES_DB:-mlflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [modelserve]
