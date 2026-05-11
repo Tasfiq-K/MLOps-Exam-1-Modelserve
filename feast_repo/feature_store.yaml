@@ -15,3 +15,16 @@
 #
 # Refer to Feast documentation: https://docs.feast.dev/
 # ============================================================================
+project: modelserve
+
+provider: local
+
+registry:
+    path: data/registry.db
+
+online_store:
+    type: redis
+    connection_string: "redis:6379"
+
+offline_store:
+    type: file
