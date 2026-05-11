@@ -61,3 +61,39 @@ services:
       timeout: 5s
       retries: 10
     networks: [modelserve]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MLFLOW_S3_IGNORE_TLS: "true"
+    # --serve-artifacts + --artifacts-destination: clients on the HOST upload via HTTP.
+    # Using only --default-artifact-root without serving makes the client try file:/mlflow/... on the
+    # host -> PermissionError. See README (MLflow artifacts from host).
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}
+      --serve-artifacts
+      --artifacts-destination /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks: [modelserve]
