@@ -17,3 +17,12 @@
 # Usage:
 #   python scripts/materialize_features.py
 # ============================================================================
+
+from datetime import datetime
+from feast import FeatureStore
+
+store = FeatureStore(repo_path="feast_repo")
+
+store.materialize_incremental(end_date=datetime.now())
+
+print("Features materialized successfully")
