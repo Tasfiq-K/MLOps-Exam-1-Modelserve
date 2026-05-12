@@ -11,3 +11,12 @@
 #
 # Refer to the Pulumi/CI/CD lab from Episodes 2-3.
 # ============================================================================
+
+name: modelserve
+runtime: python
+description: MLOps inference stack — model serving, monitoring, and feature store on AWS
+config:
+  aws:region:
+    description: The AWS region to deploy into
+    default: ap-southeast-1
+ 
