@@ -17,3 +17,101 @@
 #
 # Refer to Prometheus docs: https://prometheus.io/docs/prometheus/latest/configuration/
 # ============================================================================
+
+global:
+
+  # --------------------------------------------------------------------------
+  # Default scrape interval for all targets
+  # --------------------------------------------------------------------------
+
+  scrape_interval: 15s
+
+  # --------------------------------------------------------------------------
+  # How frequently alert rules are evaluated
+  # --------------------------------------------------------------------------
+
+  evaluation_interval: 15s
+
+
+# ----------------------------------------------------------------------------
+# Alert Rules
+# ----------------------------------------------------------------------------
+
+rule_files:
+  - "alerts.yml"
+
+
+# ----------------------------------------------------------------------------
+# Scrape Configurations
+# ----------------------------------------------------------------------------
+
+scrape_configs:
+
+  # ==========================================================================
+  # 1. PROMETHEUS SELF-MONITORING
+  # ==========================================================================
+  # Prometheus monitors itself for:
+  #   - scrape performance
+  #   - TSDB health
+  #   - internal metrics
+  # ==========================================================================
+
+  - job_name: "prometheus"
+
+    static_configs:
+      - targets:
+          - "localhost:9090"
+
+
+  # ==========================================================================
+  # 2. FASTAPI INFERENCE SERVICE
+  # ==========================================================================
+  # Scrapes:
+  #   - request metrics
+  #   - latency histograms
+  #   - error counters
+  #   - Feast metrics
+  #   - model version metrics
+  #
+  # IMPORTANT:
+  #   Target name MUST match docker-compose service name.
+  # ==========================================================================
+
+  - job_name: "fastapi"
+
+    scrape_interval: 10s
+
+    metrics_path: /metrics
+
+    static_configs:
+      - targets:
+          - "fastapi:8000"
+
+    # ------------------------------------------------------------------------
+    # Helpful labels for Grafana dashboards
+    # ------------------------------------------------------------------------
+
+    relabel_configs:
+      - target_label: service
+        replacement: "modelserve-api"
+
+
+  # ==========================================================================
+  # 3. OPTIONAL NODE EXPORTER
+  # ==========================================================================
+  # Host-level system metrics:
+  #   - CPU usage
+  #   - memory usage
+  #   - filesystem usage
+  #   - network throughput
+  #
+  # Enable only if node_exporter container exists.
+  # ==========================================================================
+
+  - job_name: "node-exporter"
+
+    scrape_interval: 15s
+
+    static_configs:
+      - targets:
+          - "node-exporter:9100"

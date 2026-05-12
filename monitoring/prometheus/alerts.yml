@@ -28,3 +28,120 @@
 #
 # The TA will verify these alerts exist and may trigger them during the demo.
 # ============================================================================
+
+# ============================================================================
+# ModelServe — Prometheus Alert Rules
+# ============================================================================
+
+groups:
+
+  - name: modelserve-alerts
+
+    rules:
+
+      # ----------------------------------------------------------------------
+      # 1. HIGH PREDICTION LATENCY
+      # ----------------------------------------------------------------------
+      # Triggers when p95 prediction latency exceeds 500ms
+      # continuously for 5 minutes.
+      #
+      # Uses Prometheus histogram quantile calculation.
+      # ----------------------------------------------------------------------
+
+      - alert: HighPredictionLatency
+
+        expr: |
+          histogram_quantile(
+            0.95,
+            rate(prediction_duration_seconds_bucket[5m])
+          ) > 0.5
+
+        for: 5m
+
+        labels:
+          severity: warning
+          service: fastapi
+
+        annotations:
+          summary: "High prediction latency detected"
+
+          description: |
+            The p95 prediction latency has exceeded 500ms
+            for more than 5 minutes.
+
+            Possible causes:
+              - Slow Feast online feature retrieval
+              - MLflow model inference slowdown
+              - CPU or memory pressure
+              - Redis latency
+
+
+      # ----------------------------------------------------------------------
+      # 2. ELEVATED ERROR RATE
+      # ----------------------------------------------------------------------
+      # Triggers when prediction error rate exceeds 5%
+      # for 2 consecutive minutes.
+      #
+      # Formula:
+      #   errors / total requests
+      # ----------------------------------------------------------------------
+
+      - alert: ElevatedPredictionErrorRate
+
+        expr: |
+          (
+            rate(prediction_errors_total[2m])
+            /
+            rate(prediction_requests_total[2m])
+          ) > 0.05
+
+        for: 2m
+
+        labels:
+          severity: warning
+          service: fastapi
+
+        annotations:
+          summary: "Elevated prediction error rate"
+
+          description: |
+            Prediction error rate has exceeded 5%
+            for more than 2 minutes.
+
+            Possible causes:
+              - Feast online store unavailable
+              - MLflow model loading failure
+              - Invalid inference requests
+              - Internal FastAPI exceptions
+
+
+      # ----------------------------------------------------------------------
+      # 3. FASTAPI SERVICE DOWN
+      # ----------------------------------------------------------------------
+      # Triggers when Prometheus cannot scrape FastAPI
+      # for at least 1 minute.
+      # ----------------------------------------------------------------------
+
+      - alert: FastAPIServiceDown
+
+        expr: |
+          up{job="fastapi"} == 0
+
+        for: 1m
+
+        labels:
+          severity: critical
+          service: fastapi
+
+        annotations:
+          summary: "FastAPI service is down"
+
+          description: |
+            Prometheus has been unable to reach the
+            FastAPI inference service for at least 1 minute.
+
+            Possible causes:
+              - Container crash
+              - Healthcheck failure
+              - Docker network issue
+              - Host resource exhaustion

@@ -19,3 +19,351 @@
 # The TA will check that this dashboard renders automatically after
 # docker compose up with no manual steps.
 # ============================================================================
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+
+  "editable": true,
+
+  "fiscalYearStartMonth": 0,
+
+  "graphTooltip": 0,
+
+  "links": [],
+
+  "panels": [
+
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+
+          "custom": {
+            "axisCenteredZero": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+
+        "overrides": []
+      },
+
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+
+      "id": 1,
+
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+
+      "targets": [
+
+        {
+          "expr": "histogram_quantile(0.50, rate(prediction_duration_seconds_bucket[5m]))",
+          "legendFormat": "p50 latency",
+          "refId": "A"
+        },
+
+        {
+          "expr": "histogram_quantile(0.95, rate(prediction_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95 latency",
+          "refId": "B"
+        },
+
+        {
+          "expr": "histogram_quantile(0.99, rate(prediction_duration_seconds_bucket[5m]))",
+          "legendFormat": "p99 latency",
+          "refId": "C"
+        }
+      ],
+
+      "title": "Prediction Latency (p50 / p95 / p99)",
+
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+
+        "overrides": []
+      },
+
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+
+      "id": 2,
+
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+
+      "targets": [
+        {
+          "expr": "rate(prediction_requests_total[1m])",
+          "legendFormat": "requests/sec",
+          "refId": "A"
+        }
+      ],
+
+      "title": "Prediction Request Rate",
+
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+
+        "overrides": []
+      },
+
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+
+      "id": 3,
+
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+
+      "targets": [
+        {
+          "expr": "rate(prediction_errors_total[5m])",
+          "legendFormat": "errors/sec",
+          "refId": "A"
+        }
+      ],
+
+      "title": "Prediction Error Rate",
+
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+
+        "overrides": []
+      },
+
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+
+      "id": 4,
+
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+
+      "targets": [
+        {
+          "expr": "model_version_info",
+          "legendFormat": "{{version}}",
+          "refId": "A"
+        }
+      ],
+
+      "title": "Current Model Version",
+
+      "type": "stat"
+    },
+
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+
+        "overrides": []
+      },
+
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+
+      "id": 5,
+
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+
+      "targets": [
+
+        {
+          "expr": "rate(feast_online_store_hits_total[5m])",
+          "legendFormat": "hits/sec",
+          "refId": "A"
+        },
+
+        {
+          "expr": "rate(feast_online_store_misses_total[5m])",
+          "legendFormat": "misses/sec",
+          "refId": "B"
+        }
+      ],
+
+      "title": "Feast Online Store Hit/Miss Rate",
+
+      "type": "timeseries"
+    }
+  ],
+
+  "refresh": "10s",
+
+  "schemaVersion": 39,
+
+  "style": "dark",
+
+  "tags": [
+    "mlops",
+    "fastapi",
+    "prometheus",
+    "grafana",
+    "mlflow",
+    "feast"
+  ],
+
+  "templating": {
+    "list": []
+  },
+
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+
+  "timezone": "",
+
+  "title": "ModelServe Overview",
+
+  "uid": "modelserve-overview",
+
+  "version": 1,
+
+  "weekStart": ""
+}
