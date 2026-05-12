@@ -266,3 +266,22 @@ services:
 
     networks:
       - modelserve
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+
+    restart: unless-stopped
+
+    ports:
+      - "9100:9100"
+
+    command:
+      - "--path.rootfs=/host"
+
+    pid: host
+
+    volumes:
+      - "/:/host:ro,rslave"
+
+    networks:
+      - modelserve
