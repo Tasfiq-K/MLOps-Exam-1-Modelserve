@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ML artifacts
+mlruns/
+artifacts/
+*.pkl
+*.joblib
+
+# Data
+*.csv
+*.parquet
+
+# Local configs
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tests
+tests/
+
+# Documentation
+docs/
+
+# Monitoring exports
+grafana.db
+
+# Docker
+docker-compose.yml
