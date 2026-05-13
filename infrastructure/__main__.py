@@ -239,12 +239,12 @@ elastic_ip = aws.ec2.Eip(
 # ============================================================================
 # Stack Outputs — consumed by CI/CD
 # ============================================================================
-pulumi.export("vpc_id", vpc.id)
-pulumi.export("subnet_id", public_subnet.id)
-pulumi.export("security_group_id", security_group.id)
-pulumi.export("instance_id", instance.id)
-pulumi.export("instance_public_ip", elastic_ip.public_ip)
-pulumi.export("grafana_url", Output.concat("http://", elastic_ip.public_ip, ":3000"))
-pulumi.export("prometheus_url", Output.concat("http://", elastic_ip.public_ip, ":9090"))
-pulumi.export("inference_url", Output.concat("http://", elastic_ip.public_ip, ":8001"))
-pulumi.export("unique_suffix", unique_suffix)
+    pulumi.export("vpc_id", vpc.id)
+    pulumi.export("subnet_id", public_subnet.id)
+    pulumi.export("security_group_id", security_group.id)
+    pulumi.export("instance_id", instance.id)
+    pulumi.export("instance_public_ip", elastic_ip.public_ip)
+    pulumi.export("grafana_url", Output.concat("http://", elastic_ip.public_ip, ":3000"))
+    pulumi.export("prometheus_url", Output.concat("http://", elastic_ip.public_ip, ":9090"))
+    pulumi.export("inference_url", Output.concat("http://", elastic_ip.public_ip, ":8001"))
+    pulumi.export("unique_suffix", unique_suffix)
