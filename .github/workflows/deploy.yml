@@ -37,3 +37,487 @@
 #
 # Refer to the Pulumi/CI/CD lab from Episodes 2-3 for patterns.
 # ============================================================================
+
+# ============================================================================
+# ModelServe — CI/CD Pipeline
+# File: .github/workflows/deploy.yml
+# ============================================================================
+# This workflow:
+#   1. Runs tests on every push and PR
+#   2. Deploys infrastructure using Pulumi
+#   3. Builds and pushes Docker image to AWS ECR
+#   4. Deploys the stack to EC2 using Docker Compose
+# ============================================================================
+
+name: Deploy ModelServe Pipeline
+
+
+# ----------------------------------------------------------------------------
+# TRIGGERS
+# ----------------------------------------------------------------------------
+
+on:
+  push:
+    branches: [ main ]
+
+  pull_request:
+    branches: [ main ]
+
+
+# ----------------------------------------------------------------------------
+# GLOBAL ENVIRONMENT VARIABLES
+# ----------------------------------------------------------------------------
+
+env:
+  AWS_REGION: ap-southeast-1
+  PULUMI_STACK: tasfiq-kamran-gmail-com/modelserve/sandbox
+
+  IMAGE_NAME: modelserve-api
+
+
+# ----------------------------------------------------------------------------
+# JOBS
+# ----------------------------------------------------------------------------
+
+jobs:
+
+  # ==========================================================================
+  # TEST
+  # ==========================================================================
+
+  test:
+
+    name: Run Tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ----------------------------------------------------------------------
+      # Checkout repository
+      # ----------------------------------------------------------------------
+
+      - uses: actions/checkout@v4
+
+
+      # ----------------------------------------------------------------------
+      # Setup Python
+      # ----------------------------------------------------------------------
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+          python-version: "3.12"
+
+
+      # ----------------------------------------------------------------------
+      # Install dependencies
+      # ----------------------------------------------------------------------
+
+      - name: Install dependencies
+
+        run: |
+          python -m pip install --upgrade pip
+
+          pip install -r requirements.txt
+
+
+      # ----------------------------------------------------------------------
+      # Run tests
+      # ----------------------------------------------------------------------
+
+      - name: Run pytest
+
+        run: |
+          pytest tests/ -v --tb=short
+
+
+
+  # ==========================================================================
+  # DEPLOY INFRASTRUCTURE
+  # ==========================================================================
+
+  deploy-infrastructure:
+
+    name: Deploy Infrastructure
+
+    needs: test
+
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    outputs:
+      instance_ip: ${{ steps.get-outputs.outputs.instance_ip }}
+      ecr_repo_url: ${{ steps.get-outputs.outputs.ecr_repo_url }}
+
+    steps:
+
+      # ----------------------------------------------------------------------
+      # Checkout repository
+      # ----------------------------------------------------------------------
+
+      - uses: actions/checkout@v4
+
+
+      # ----------------------------------------------------------------------
+      # Configure AWS credentials
+      # ----------------------------------------------------------------------
+
+      - name: Configure AWS credentials
+
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      # ----------------------------------------------------------------------
+      # Setup Python
+      # ----------------------------------------------------------------------
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+          python-version: "3.12"
+
+
+      # ----------------------------------------------------------------------
+      # Install Pulumi
+      # ----------------------------------------------------------------------
+
+      - name: Install Pulumi
+
+        run: |
+          curl -fsSL https://get.pulumi.com | sh
+
+          echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
+
+
+      # ----------------------------------------------------------------------
+      # Install infrastructure dependencies
+      # ----------------------------------------------------------------------
+
+      - name: Install infrastructure dependencies
+
+        run: |
+          cd infrastructure
+
+          pip install -r requirements.txt
+
+
+      # ----------------------------------------------------------------------
+      # Pulumi login
+      # ----------------------------------------------------------------------
+
+      - name: Pulumi Login
+
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+        run: |
+          pulumi login
+
+
+      # ----------------------------------------------------------------------
+      # Deploy infrastructure
+      # ----------------------------------------------------------------------
+
+      - name: Deploy infrastructure
+
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+
+        run: |
+          cd infrastructure
+
+          pulumi stack select ${{ env.PULUMI_STACK }} || pulumi stack init ${{ env.PULUMI_STACK }}
+
+          pulumi up --yes
+
+
+      # ----------------------------------------------------------------------
+      # Export stack outputs
+      # ----------------------------------------------------------------------
+
+      - name: Get deployment outputs
+
+        id: get-outputs
+
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+        run: |
+          cd infrastructure
+
+          echo "instance_ip=$(pulumi stack output instance_public_ip)" >> $GITHUB_OUTPUT
+
+          echo "ecr_repo_url=$(pulumi stack output ecr_repository_url)" >> $GITHUB_OUTPUT
+
+
+
+  # ==========================================================================
+  # BUILD AND PUSH DOCKER IMAGE
+  # ==========================================================================
+
+  build-and-push:
+
+    name: Build and Push Docker Image
+
+    needs: deploy-infrastructure
+
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+
+      # ----------------------------------------------------------------------
+      # Checkout repository
+      # ----------------------------------------------------------------------
+
+      - uses: actions/checkout@v4
+
+
+      # ----------------------------------------------------------------------
+      # Configure AWS credentials
+      # ----------------------------------------------------------------------
+
+      - name: Configure AWS credentials
+
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      # ----------------------------------------------------------------------
+      # Login to Amazon ECR
+      # ----------------------------------------------------------------------
+
+      - name: Login to Amazon ECR
+
+        id: login-ecr
+
+        uses: aws-actions/amazon-ecr-login@v2
+
+
+      # ----------------------------------------------------------------------
+      # Build, tag, and push image
+      # ----------------------------------------------------------------------
+
+      - name: Build and push Docker image
+
+        env:
+          ECR_REPOSITORY: ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+
+          echo "Building Docker image..."
+
+          docker build \
+            -t $ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REPOSITORY:latest \
+            .
+
+          echo "Pushing Docker images..."
+
+          docker push $ECR_REPOSITORY:$IMAGE_TAG
+
+          docker push $ECR_REPOSITORY:latest
+
+          echo "Docker image pushed successfully"
+
+
+
+  # ==========================================================================
+  # DEPLOY SERVICES
+  # ==========================================================================
+
+  deploy-services:
+
+    name: Deploy Services
+
+    needs:
+      - deploy-infrastructure
+      - build-and-push
+
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+
+      # ----------------------------------------------------------------------
+      # Checkout repository
+      # ----------------------------------------------------------------------
+
+      - uses: actions/checkout@v4
+
+
+      # ----------------------------------------------------------------------
+      # Configure AWS credentials
+      # ----------------------------------------------------------------------
+
+      - name: Configure AWS credentials
+
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      # ----------------------------------------------------------------------
+      # Deploy via SSH
+      # ----------------------------------------------------------------------
+
+      - name: Deploy services to EC2
+
+        uses: appleboy/ssh-action@v1.0.3
+
+        env:
+          ECR_REPOSITORY: ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+
+          IMAGE_TAG: ${{ github.sha }}
+
+        with:
+          host: ${{ needs.deploy-infrastructure.outputs.instance_ip }}
+
+          username: ubuntu
+
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          timeout: 30m
+
+          command_timeout: 30m
+
+          envs: ECR_REPOSITORY,IMAGE_TAG
+
+          script: |
+
+            echo "=== Starting ModelServe Deployment ==="
+
+
+            # ----------------------------------------------------------------
+            # Configure AWS CLI
+            # ----------------------------------------------------------------
+
+            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+
+            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
+            aws configure set default.region "${{ env.AWS_REGION }}"
+
+
+            # ----------------------------------------------------------------
+            # Login to ECR
+            # ----------------------------------------------------------------
+
+            aws ecr get-login-password --region "${{ env.AWS_REGION }}" \
+              | sudo docker login \
+                --username AWS \
+                --password-stdin \
+                $(echo $ECR_REPOSITORY | cut -d/ -f1)
+
+
+            # ----------------------------------------------------------------
+            # Create deployment directory
+            # ----------------------------------------------------------------
+
+            mkdir -p ~/modelserve
+
+            cd ~/modelserve
+
+
+            # ----------------------------------------------------------------
+            # Pull latest source
+            # ----------------------------------------------------------------
+
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/${{ github.repository }} .
+            else
+              git pull origin main
+            fi
+
+
+            # ----------------------------------------------------------------
+            # Pull latest Docker image
+            # ----------------------------------------------------------------
+
+            sudo docker pull $ECR_REPOSITORY:latest
+
+
+            # ----------------------------------------------------------------
+            # Restart stack
+            # ----------------------------------------------------------------
+
+            sudo docker compose down || true
+
+            sudo docker compose up -d
+
+
+            # ----------------------------------------------------------------
+            # Cleanup old images
+            # ----------------------------------------------------------------
+
+            sudo docker image prune -f
+
+
+            # ----------------------------------------------------------------
+            # Wait for startup
+            # ----------------------------------------------------------------
+
+            sleep 45
+
+
+            # ----------------------------------------------------------------
+            # Verify deployment
+            # ----------------------------------------------------------------
+
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
+
+            if [ "$HEALTH" = "200" ]; then
+
+              echo "✅ ModelServe deployed successfully!"
+
+              PUBLIC_IP=$(curl -s ifconfig.me)
+
+              echo ""
+              echo "🌐 Services:"
+              echo "  FastAPI API:  http://$PUBLIC_IP:8000"
+              echo "  MLflow:       http://$PUBLIC_IP:5000"
+              echo "  Prometheus:   http://$PUBLIC_IP:9090"
+              echo "  Grafana:      http://$PUBLIC_IP:3000"
+              echo ""
+
+            else
+
+              echo "❌ Health check failed"
+
+              sudo docker compose ps
+
+              sudo docker compose logs --tail=50
+
+              exit 1
+
+            fi
