@@ -66,8 +66,8 @@ class ModelService:
     def __init__(self):
 
         self.model = None
-        self.model_name = settings.MODEL_NAME
-        self.model_stage = settings.MODEL_STAGE
+        self.model_name = settings.model_name
+        self.model_stage = settings.model_stage
 
         self.model_version = "unknown"
         self.model_uri = None
@@ -89,11 +89,11 @@ class ModelService:
 
             logger.info(
                 "Connecting to MLflow Tracking Server: %s",
-                settings.MLFLOW_TRACKING_URI,
+                settings.mlflow_tracking_uri,
             )
 
             mlflow.set_tracking_uri(
-                settings.MLFLOW_TRACKING_URI
+                settings.mlflow_tracking_uri
             )
 
             self.client = MlflowClient()

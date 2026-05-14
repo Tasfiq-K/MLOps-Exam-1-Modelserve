@@ -63,11 +63,11 @@ class FeatureClient:
 
         logger.info(
             "Initializing Feast FeatureStore from repo: %s",
-            settings.FEAST_REPO_PATH,
+            settings.feast_repo_path,
         )
 
         self.store = FeatureStore(
-            repo_path=settings.FEAST_REPO_PATH
+            repo_path=settings.feast_repo_path
         )
 
         # --------------------------------------------------------------------
