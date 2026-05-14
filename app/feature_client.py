@@ -32,8 +32,8 @@ from feast import FeatureStore
 
 from app.config import settings
 from app.metrics import (
-    feature_store_hits,
-    feature_store_misses,
+    feature_store_hits_total,
+    feature_store_misses_total,
 )
 
 
