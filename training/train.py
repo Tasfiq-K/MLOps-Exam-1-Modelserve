@@ -212,7 +212,7 @@ def main():
         # Log model
         mlflow.sklearn.log_model(
             model,
-            artifact_path="model",
+            name="model",
             registered_model_name=MODEL_NAME,
         )
 
