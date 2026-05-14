@@ -1,21 +1,36 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
 
+    # =========================================================================
     # MLflow
-    MLFLOW_TRACKING_URI: str = "http://mlflow:5000"
-    MODEL_NAME: str = "modelserve-model"
-    MODEL_STAGE: str = "Production"
+    # =========================================================================
+    mlflow_tracking_uri: str = "http://mlflow:5000"
+    model_name: str = "modelserve-model"
+    model_stage: str = "Production"
 
+    # =========================================================================
     # Feast
-    FEAST_REPO_PATH: str = "./feast_repo"
+    # =========================================================================
+    feast_repo_path: str = "./feast_repo"
 
-    # API
-    APP_NAME: str = "ModelServe"
+    # =========================================================================
+    # FastAPI
+    # =========================================================================
+    app_name: str = "ModelServe"
+    fastapi_host: str = "0.0.0.0"
+    fastapi_port: int = 8000
+    log_level: str = "INFO"
 
-    class Config:
-        env_file = ".env"
+    # =========================================================================
+    # Pydantic Settings
+    # =========================================================================
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        case_sensitive=False,
+    )
 
 
 settings = Settings()
